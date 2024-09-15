@@ -10,7 +10,6 @@ from ping3 import ping
 Port Scanner Script
 Usage: python script.py <ip> <ports>
 Example: python script.py 127.0.0.1 80 443 8000:8100
-Disclaimer: Use this script responsibly. Scanning networks without permission may be illegal.
 """
 
 def test_tcp(ip, port):
@@ -31,19 +30,15 @@ def test(ip, port, services):
     """
     Test if a TCP port is open and print the result.
     """
-    # Validate port number
     if not (0 <= port <= 65535):
         message = f"Invalid port number: {port}"
         tqdm.write(message)
         return
 
-    # Run the TCP test
     result = test_tcp(ip, port)
 
-    # Get service name
     service_name = services.get((str(port), 'tcp'), 'Unknown service')
 
-    # Print the result
     if result:
         message = f"Port {port} (TCP) is open ({service_name})"
         tqdm.write(message)
@@ -54,9 +49,7 @@ def portscan(ip, ports, services):
     """
     port_list = []
 
-    # Parse ports and create a list of all ports to scan
     for port in ports:
-        # If the port is a range, add each port in the range to the list
         if ':' in port:
             start, end = port.split(':')
             for p in range(int(start), int(end) + 1):
@@ -64,12 +57,10 @@ def portscan(ip, ports, services):
         else:
             port_list.append(int(port))
 
-    # Initialize the tqdm progress bar
     progress_bar = tqdm(total=len(port_list), desc="Scanning Ports")
 
     port_queue = Queue()
 
-    # Enqueue all ports
     for port in port_list:
         port_queue.put(port)
 
@@ -81,17 +72,16 @@ def portscan(ip, ports, services):
                 break
             test(ip, port, services)
             port_queue.task_done()
-            progress_bar.update(1)  # Update the progress bar
+            progress_bar.update(1)
 
-    # Start threads
-    num_threads = 100  # Adjust based on your system
+    num_threads = 100 
     for _ in range(num_threads):
         t = threading.Thread(target=worker)
         t.daemon = True
         t.start()
 
     port_queue.join()
-    progress_bar.close()  # Close the progress bar when done
+    progress_bar.close()
 
 def load_services():
     """
@@ -101,7 +91,6 @@ def load_services():
     try:
         with open('/etc/services') as f:
             for line in f:
-                # Skip comments and empty lines
                 if line.startswith('#') or not line.strip():
                     continue
                 parts = line.split()
@@ -125,27 +114,21 @@ def is_ip_connectable(ip):
 
 
 if __name__ == "__main__":
-    # Parse the command line arguments
     parser = argparse.ArgumentParser(description='Port Scanner')
     parser.add_argument("ip", help="IP address to scan")
     parser.add_argument("ports", help="Ports to scan (e.g., 80 443 20:25)", nargs="+")
     args = parser.parse_args()
 
-    # Validate IP address
     try:
         ipaddress.ip_address(args.ip)
     except ValueError:
         print(f"Invalid IP address: {args.ip}")
         exit(1)
 
-    # Check if the IP is connectable
     if not is_ip_connectable(args.ip):
         print(f"The IP address {args.ip} is not reachable.")
         exit(1)
 
-    # Load the service information from the /etc/services file
     services = load_services()
 
-    # Run the scan for the given ports
     portscan(args.ip, args.ports, services)
-
